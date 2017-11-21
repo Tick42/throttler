@@ -110,7 +110,7 @@
       closes."
 
   ([c rate unit]
-     (throttle-chan c rate unit 0))
+     (throttle-chan c rate unit 1))
 
   ([c rate unit bucket-size]
      ((chan-throttler rate unit bucket-size) c)))
@@ -180,7 +180,7 @@
   will behave like a bursty channel. See throttle-chan for details."
 
   ([f rate unit]
-     (throttle-fn f rate unit 0))
+     (throttle-fn f rate unit 1))
 
   ([f rate unit bucket-size]
      ((fn-throttler rate unit bucket-size) f)))
