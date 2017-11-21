@@ -3,7 +3,8 @@
             [throttler.core :refer :all]
             [throttler.bench :refer [rate]]
 
-            [clojure.test :refer [deftest is testing use-fixtures]]))
+            [clojure.test :refer [deftest is testing use-fixtures]]
+            [criterium.core :as c]))
 
 (defn- cljs-env?
   [env]
@@ -35,6 +36,13 @@
       (roughly (rate (fn [] (+? 1 1)) 10) 10 2)
       (roughly (rate (fn [] (+?? 1 1)) 10) 10 2))
 
+    (testing "initial spike can be accommodated"
+      (let [+spike (throttle-fn + 10 :second 1000)
+            time-ns (first (c/time-body (dotimes [_ 1000] (+spike 1 1))))
+            time-s (/ time-ns 1E9)]
+        (is (<= time-s 1))
+        (roughly (rate (fn [] (+spike 1 1)) 10) 10 2)))
+
     (testing "It fails graciously with the wrong unit"
       (is (thrown? IllegalArgumentException (throttle-fn + 1 :foo)))
       (is (thrown? IllegalArgumentException (throttle-fn + -1 :hour)))
@@ -55,14 +63,4 @@
       (close! in)
       (is (nil? (<!! out))))))
 
-;(facts "about throttle-chan"
-;       (let [in (chan 1)
-;             out (throttle-chan in 10 :second)]
-;
-;         (fact "acts like a piped channel"
-;               (>!! in :token)
-;               (<!! out) => :token)
-;
-;         (fact "closing the input closes the output"
-;               (close! in)
-;               (<!! out) => nil)))
+

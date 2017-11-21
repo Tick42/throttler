@@ -11,9 +11,9 @@
 
 (def ^{:no-doc true} unit->ms
   {:microsecond 0.001 :millisecond 1
-   :second 1000 :minute 60000
-   :hour 3600000 :day 86400000
-   :month 2678400000})
+   :second      1000 :minute 60000
+   :hour        3600000 :day 86400000
+   :month       2678400000})
 
 (defmacro pipe [from to]
   "Pipes an element from the from channel and supplies it to the to
@@ -26,16 +26,17 @@
 
 (defn- chan-throttler* [rate-ms bucket-size]
   (let [sleep-time (round (max (/ rate-ms) min-sleep-time))
-        token-value (round (* sleep-time rate-ms))   ; how many messages to pipe per token
-        bucket (chan (dropping-buffer bucket-size))] ; we model the bucket with a buffered channel
+        token-value (round (* sleep-time rate-ms))          ; how many messages to pipe per token
+        bucket (chan (dropping-buffer bucket-size))]        ; we model the bucket with a buffered channel
 
     ;; The bucket filler thread. Puts a token in the bucket every
     ;; sleep-time seconds. If the bucket is full the token is dropped
     ;; since the bucket channel uses a dropping buffer.
 
     (go
-     (while (>! bucket :token)
-       (<! (timeout (int sleep-time)))))
+      (dotimes [_ bucket-size] (>! bucket :token))
+      (while (>! bucket :token)
+        (<! (timeout (int sleep-time)))))
 
     ;; The piping thread. Takes a token from the bucket (blocking until
     ;; one is ready if the bucket is empty), and forwards token-value
@@ -47,9 +48,9 @@
     ;; is 1 and we adjust sleep-time to obtain the desired rate.
 
     (fn [c]
-      (let [c' (chan)] ; the throttled chan
+      (let [c' (chan)]                                      ; the throttled chan
         (go
-          (while (<! bucket) ; block for a token
+          (while (<! bucket)                                ; block for a token
             (dotimes [_ token-value]
               (when-not (pipe c c')
                 (close! bucket)))))
@@ -70,50 +71,50 @@
    chan-throttler."
 
   ([rate unit]
-     (chan-throttler rate unit 0))
+   (chan-throttler rate unit 0))
   ([rate unit bucket-size]
-     (when (nil? (unit->ms unit))
-       (throw (IllegalArgumentException.
-               (str "Invalid unit. Available units are: " (keys unit->ms)))))
+   (when (nil? (unit->ms unit))
+     (throw (IllegalArgumentException.
+              (str "Invalid unit. Available units are: " (keys unit->ms)))))
 
-     (when-not (and (number? rate) (pos? rate))
-       (throw (IllegalArgumentException. "rate should be a positive number")))
+   (when-not (and (number? rate) (pos? rate))
+     (throw (IllegalArgumentException. "rate should be a positive number")))
 
-     (when (or (not (integer? bucket-size)) (neg? bucket-size))
-       (throw (IllegalArgumentException. "bucket-size should be a non-negative integer")))
+   (when (or (not (integer? bucket-size)) (neg? bucket-size))
+     (throw (IllegalArgumentException. "bucket-size should be a non-negative integer")))
 
-     (let [rate-ms (/ rate (unit->ms unit))]
-       (chan-throttler* rate-ms bucket-size))))
+   (let [rate-ms (/ rate (unit->ms unit))]
+     (chan-throttler* rate-ms bucket-size))))
 
 (defn throttle-chan
-     "Takes a write channel, a goal rate and a unit and returns a read
-      channel. Messages written to the input channel can be read from
-      the throttled output channel at a rate that will be at most the
-      provided goal rate.
+  "Takes a write channel, a goal rate and a unit and returns a read
+   channel. Messages written to the input channel can be read from
+   the throttled output channel at a rate that will be at most the
+   provided goal rate.
 
-      Optionally takes a bucket size, which will correspond to the
-      maximum number of burst messages.
+   Optionally takes a bucket size, which will correspond to the
+   maximum number of burst messages.
 
-      As an example, the channel produced by calling:
+   As an example, the channel produced by calling:
 
-      (throttle-chan (chan) 1 :second 9)
+   (throttle-chan (chan) 1 :second 9)
 
-      Will transmit 1 message/second on average but can transmit up to
-      10 messages on a single second (9 burst messages + 1
-      message/second).
+   Will transmit 1 message/second on average but can transmit up to
+   10 messages on a single second (9 burst messages + 1
+   message/second).
 
-      Note that after the burst messages have been consumed they have to
-      be refilled in a quiescent period at the provided rate, so the
-      overall goal rate is not affected in the long term.
+   Note that after the burst messages have been consumed they have to
+   be refilled in a quiescent period at the provided rate, so the
+   overall goal rate is not affected in the long term.
 
-      The throttled channel will be closed when the input channel
-      closes."
+   The throttled channel will be closed when the input channel
+   closes."
 
   ([c rate unit]
-     (throttle-chan c rate unit 1))
+   (throttle-chan c rate unit 1))
 
   ([c rate unit bucket-size]
-     ((chan-throttler rate unit bucket-size) c)))
+   ((chan-throttler rate unit bucket-size) c)))
 
 (defn fn-throttler
 
@@ -149,26 +150,26 @@
    cap the allotted bandwidth."
 
   ([rate unit]
-     (fn-throttler rate unit 0))
+   (fn-throttler rate unit 0))
 
   ([rate unit bucket-size]
-     (let [in (chan 1)
-           out (throttle-chan in rate unit bucket-size)]
+   (let [in (chan 1)
+         out (throttle-chan in rate unit bucket-size)]
 
-       ;; This function takes a function and produces a throttled
-       ;; function. When called multiple times, all the resulting
-       ;; throttled functions will share the same throttled channel,
-       ;; resulting in a globally shared rate. I.e., the sum af the
-       ;; rates of all functions will be at most the argument rate).
+     ;; This function takes a function and produces a throttled
+     ;; function. When called multiple times, all the resulting
+     ;; throttled functions will share the same throttled channel,
+     ;; resulting in a globally shared rate. I.e., the sum af the
+     ;; rates of all functions will be at most the argument rate).
 
-       (fn [f]
-         (fn [& args]
-            ;; The approach is simple: pipe a bogus message through a
-            ;; throttled channel before evaluating the original function.
+     (fn [f]
+       (fn [& args]
+         ;; The approach is simple: pipe a bogus message through a
+         ;; throttled channel before evaluating the original function.
 
-           (>!! in :eval-request)
-           (<!! out)
-           (apply f args))))))
+         (>!! in :eval-request)
+         (<!! out)
+         (apply f args))))))
 
 (defn throttle-fn
 
@@ -180,7 +181,7 @@
   will behave like a bursty channel. See throttle-chan for details."
 
   ([f rate unit]
-     (throttle-fn f rate unit 1))
+   (throttle-fn f rate unit 1))
 
   ([f rate unit bucket-size]
-     ((fn-throttler rate unit bucket-size) f)))
+   ((fn-throttler rate unit bucket-size) f)))
