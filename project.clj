@@ -3,9 +3,8 @@
   :url "https://github.com/tick42/throttler"
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.9.0-RC1" :scope "provided"]
-                 [org.clojure/spec.alpha "0.1.143" :scope "provided"]
-                 [org.clojure/core.async "0.3.465" :scope "provided"]]
+  :dependencies [[org.clojure/clojure "1.10.0" :scope "provided"]
+                 [org.clojure/core.async "0.4.490" :scope "provided"]]
   :profiles {:dev {:dependencies [[criterium "0.4.3"]]
                    :plugins      [[test2junit "1.3.3"]]}}
 
