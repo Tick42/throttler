@@ -1,4 +1,4 @@
-(defproject tick42/throttler "1.0.1-SNAPSHOT"
+(defproject tick42/throttler "1.0.2-SNAPSHOT"
   :description "Control the throughput of function calls and core.async channels using the token bucket algorithm"
   :url "https://github.com/tick42/throttler"
   :license {:name "Eclipse Public License"
